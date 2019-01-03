@@ -3,7 +3,6 @@ import numpy as np
 import networkx as nx
 import seaborn as sns
 from matplotlib import pyplot as plt
-% matplotlib inline
 
 N_NODES = 200
 SPECT_RADIUS = 0.9

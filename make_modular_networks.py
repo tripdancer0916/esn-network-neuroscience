@@ -10,12 +10,12 @@ def make_modular_network(N, average_degree, community_number, mu):
         for j in range(i, N):
             if j < (N/community_number)*(i//(N/community_number)+1):
                 if np.random.rand() < ((N-(i/N))/N)*average_degree*(1-mu)/(N/community_number):
-                    G[i][j] = 1
-                    G[j][i] = 1
+                    G[i][j] = np.random.randn()
+                    G[j][i] = np.random.randn()
             else:
                 if np.random.rand() < ((N-(i/N))/N)*average_degree*(mu)/(N-(N/community_number)):
-                    G[i][j] = 1
-                    G[j][i] = 1
+                    G[i][j] = np.random.randn()
+                    G[j][i] = np.random.randn()
     return G
 
 if __name__ == '__main__':

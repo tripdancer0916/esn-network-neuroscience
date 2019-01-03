@@ -54,11 +54,11 @@ def make_modular_network(N, average_degree, community_number, mu):
         for j in range(i, N):
             if j < (N/community_number)*(i//(N/community_number)+1):
                 if np.random.rand() < ((N-(i/N))/N)*average_degree*(1-mu)/(N/community_number):
-                    G[i][j] = -1 if np.random.rand()<0.5 else 1
+                    G[i][j] = np.random.randn()
                     G[j][i] = G[i][j]
             else:
                 if np.random.rand() < ((N-(i/N))/N)*average_degree*(mu)/(N-(N/community_number)):
-                    G[i][j] = -1 if np.random.rand()<0.5 else 1
+                    G[i][j] = np.random.randn()
                     G[j][i] = G[i][j]
     return G
 
@@ -115,8 +115,8 @@ class LI_ESN_internal:
         # leaky integrator model:
         # it can adjust timescales for each neurons.
         preactivation = (np.dot(self.W, state) + np.dot(self.W_in, input_pattern))
-        # state = (1 - self.time_scale) * state + self.time_scale * np.tanh(preactivation)
-        state = (1 - self.time_scale) * state + self.time_scale * sigmoid(preactivation)
+        state = (1 - self.time_scale) * state + self.time_scale * np.tanh(preactivation)
+        # state = (1 - self.time_scale) * state + self.time_scale * sigmoid(preactivation)
         return (state + self.noise * self.time_scale * (self.random_state_.rand(self.n_reservoir) - 0.5))
 
     def calc_lyapunov_exp(self, inputs, initial_distance, n):
@@ -207,8 +207,6 @@ def calculate_memory_capacity(mu, r_sig, num_community):
 
         # delayed signal
         L = int(N_NODES*2)
-        # L = 20
-
         buffer = L
         total_len = future + trainlen + buffer
         data = [0 if np.random.rand() < 0.5 else 1 for i in range(total_len)]
@@ -232,10 +230,7 @@ def calculate_memory_capacity(mu, r_sig, num_community):
         pred_training = esn.fit(data[buffer:trainlen+buffer], target[:trainlen])
 
         prediction = esn.predict(data[trainlen+buffer:])
-        # print(prediction)
-
         memory_capacity_result = memory_capacity(L, buffer, data, prediction)
-        # print(memory_capacity_result)
         memory_capacity_list.append(memory_capacity_result)
     return np.mean(memory_capacity_list), mu
 
@@ -244,8 +239,8 @@ if __name__ == '__main__':
     mu_list = np.arange(0, 0.80, 0.025)
     mc_list = []
     for mu in mu_list:
-        mc, _ = calculate_memory_capacity(mu=mu, r_sig=0.3, num_community=50)
+        mc, _ = calculate_memory_capacity(mu=mu, r_sig=0.5, num_community=50)
         print(mc, mu)
         mc_list.append(mc)
     mc_list = np.array(mc_list)
-    np.savetxt('result_ncom_50.out', (mu_list, mc_list))
+    np.savetxt('result_rsig_0.5_ncom_50.out', (mu_list, mc_list))

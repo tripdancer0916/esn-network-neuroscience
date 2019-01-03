@@ -245,7 +245,7 @@ if __name__ == '__main__':
     mc_list = []
     for mu in mu_list:
         mc, _ = calculate_memory_capacity(mu=mu, r_sig=0.3, num_community=4)
-        print(mc)
+        print(mc, mu)
         mc_list.append(mc)
     mc_list = np.array(mc_list)
     np.savetxt('result.out', (mu_list, mc_list))

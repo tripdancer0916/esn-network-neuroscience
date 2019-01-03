@@ -4,7 +4,7 @@ import networkx as nx
 import seaborn as sns
 from matplotlib import pyplot as plt
 
-N_NODES = 200
+N_NODES = 500
 SPECT_RADIUS = 0.9
 
 a = 1
@@ -230,11 +230,11 @@ def calculate_narma(mu, r_sig, average_degree, num_community):
 
 
 if __name__ == '__main__':
-    mu_list = np.arange(0, 0.80, 0.025)
+    mu_list = np.arange(0, 0.95, 0.025)
     narma_list = []
     for mu in mu_list:
-        narma, _ = calculate_narma(mu=mu, r_sig=0.5, average_degree=10, num_community=20)
+        narma, _ = calculate_narma(mu=mu, r_sig=0.5, average_degree=10, num_community=50)
         print(narma, mu)
         narma_list.append(narma)
     narma_list = np.array(narma_list)
-    np.savetxt('narmaresult_rsig_0.5_k_10_ncom_20.out', (mu_list, narma_list))
+    np.savetxt('narmaresult_rsig_0.5_k_10_ncom_50.out', (mu_list, narma_list))

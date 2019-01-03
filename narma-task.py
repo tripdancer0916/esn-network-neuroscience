@@ -232,10 +232,10 @@ def calculate_narma(mu, r_sig, average_degree, num_community):
 
 if __name__ == '__main__':
     mu_list = np.arange(0, 0.80, 0.025)
-    mc_list = []
+    narma_list = []
     for mu in mu_list:
-        mc, _ = calculate_narma(mu=mu, r_sig=0.5, average_degree=10, num_community=20)
-        print(mc, mu)
-        mc_list.append(mc)
-    mc_list = np.array(mc_list)
-    np.savetxt('narmaresult_rsig_0.5_k_10_ncom_20.out', (mu_list, mc_list))
+        narma, _ = calculate_narma(mu=mu, r_sig=0.5, average_degree=10, num_community=20)
+        print(narma, mu)
+        narma_list.append(narma)
+    narma_list = np.array(narma_list)
+    np.savetxt('narmaresult_rsig_0.5_k_10_ncom_20.out', (mu_list, narma_list))

@@ -4,14 +4,17 @@ import networkx as nx
 import seaborn as sns
 from matplotlib import pyplot as plt
 
+import make_modular_networks
+
 N_NODES = 200
 SPECT_RADIUS = 0.9
 
 a = 1
-time_scale = np.ones(N_NODES)*a
+time_scale = np.ones(N_NODES) * a
 trainlen = 5000
 future = 1000
 buffer = 100
+
 
 def correct_dimensions(s, targetlength):
     if s is not None:
@@ -29,48 +32,27 @@ def correct_dimensions(s, targetlength):
 def identity(x):
     return x
 
+
 def step_function(x):
     if x > 0.5:
         return 1
     else:
         return 0
 
+
 def sigmoid(x):
-    return 1/(1+np.exp(-10*x+1))
+    return 1 / (1 + np.exp(-10 * x + 1))
+
 
 def memory_capacity(L, buffer, data, output_data):
     MC = 0
     for k in range(L):
-        cov_matrix = np.cov(np.array([data[trainlen+buffer-(k+1): trainlen+buffer-(k+1)+1000],output_data.T[k]]))
-        MC_k = cov_matrix[0][1]**2
-        MC_k = MC_k / (np.var(data[trainlen+buffer:])*np.var(output_data.T[k]))
+        cov_matrix = np.cov(
+            np.array([data[trainlen + buffer - (k + 1): trainlen + buffer - (k + 1) + 1000], output_data.T[k]]))
+        MC_k = cov_matrix[0][1] ** 2
+        MC_k = MC_k / (np.var(data[trainlen + buffer:]) * np.var(output_data.T[k]))
         MC += MC_k
     return MC
-
-def make_modular_network(N, average_degree, community_number, mu):
-    assert N % community_number == 0, 'N must be devisible by community_number'
-    G = np.zeros((N, N))
-    size = N/community_number
-    for i in range(N):
-        com_index = i//size
-        k_in_prev = 0
-        k_out_prev = 0
-        for j in range(int(size*com_index)):
-            if G[i][j] != 0:
-                k_out_prev += 1
-        for j in range(int(size*com_index), int(size*(com_index+1))):
-            if G[i][j] != 0:
-                k_in_prev += 1
-        for j in range(i, N):
-            if j < size*((i//size)+1):
-                if np.random.rand() < (average_degree*(1-mu)-k_in_prev)/(size-(i-(size*com_index))+1):
-                    G[i][j] = np.random.randn()
-                    G[j][i] = np.random.randn()
-            else:
-                if np.random.rand() < (average_degree*(mu)-k_out_prev)/(N-(size*((i//size)+1))+1):
-                    G[i][j] = np.random.randn()
-                    G[j][i] = np.random.randn()
-    return G
 
 
 class LI_ESN_internal:
@@ -136,19 +118,18 @@ class LI_ESN_internal:
         states2 = np.zeros((inputs.shape[0], self.n_reservoir))
         transient = min(int(inputs.shape[0] / 10), 100)
         for i in range(1, transient):
-            states1[i, :] = self._update(states1[i-1], inputs[i, :])
-        states2[transient-1, :] = states1[transient-1, :]
-        states2[transient-1, n] = states2[transient-1, n] + initial_distance
+            states1[i, :] = self._update(states1[i - 1], inputs[i, :])
+        states2[transient - 1, :] = states1[transient - 1, :]
+        states2[transient - 1, n] = states2[transient - 1, n] + initial_distance
         gamma_k_list = []
         for k in range(transient, inputs.shape[0]):
-            states1[k, :] = self._update(states1[k-1], inputs[k, :])
-            states2[k, :] = self._update(states2[k-1], inputs[k, :])
-            gamma_k = np.linalg.norm(states2[k, :]-states1[k, :])
-            gamma_k_list.append(gamma_k/initial_distance)
-            states2[k, :] = states1[k, :] + (initial_distance/gamma_k)*(states2[k, :]-states1[k, :])
+            states1[k, :] = self._update(states1[k - 1], inputs[k, :])
+            states2[k, :] = self._update(states2[k - 1], inputs[k, :])
+            gamma_k = np.linalg.norm(states2[k, :] - states1[k, :])
+            gamma_k_list.append(gamma_k / initial_distance)
+            states2[k, :] = states1[k, :] + (initial_distance / gamma_k) * (states2[k, :] - states1[k, :])
         lyapunov_exp = np.mean(np.log(gamma_k_list))
         return lyapunov_exp
-
 
     def fit(self, inputs, outputs):
         if inputs.ndim < 2:
@@ -165,7 +146,7 @@ class LI_ESN_internal:
         transient = min(int(inputs.shape[0] / 10), 100)
         extended_states = np.hstack((states, inputs_scaled))
 
-        self.W_out = np.dot(np.linalg.pinv(extended_states[transient:, :]),teachers_scaled[transient:, :]).T
+        self.W_out = np.dot(np.linalg.pinv(extended_states[transient:, :]), teachers_scaled[transient:, :]).T
         # print(self.W_out.shape)
 
         # remember the last state for later:
@@ -199,30 +180,30 @@ class LI_ESN_internal:
 
         for n in range(n_samples):
             states[n + 1, :] = self._update(states[n, :], inputs[n + 1, :])
-            outputs[n + 1, :] = np.dot(self.W_out,np.concatenate([states[n + 1, :], inputs[n + 1, :]]))
+            outputs[n + 1, :] = np.dot(self.W_out, np.concatenate([states[n + 1, :], inputs[n + 1, :]]))
 
         return self.out_activation(outputs[1:])
         # print(outputs[1:])
         # return np.heaviside(outputs[1:]-0.5, 0)*0.3
 
+
 def calculate_memory_capacity(mu, r_sig, num_community):
     memory_capacity_list = []
     for k in range(30):
-        W = make_modular_network(N_NODES, 6, num_community, mu)
-        W_IN = (np.random.rand(N_NODES, 1) * 2 - 1)*0.1
-        W_IN[int(N_NODES/num_community):] = 0
+        W = make_modular_networks.make_modular_network(N_NODES, 6, num_community, mu)
+        W_IN = (np.random.rand(N_NODES, 1) * 2 - 1) * 0.1
+        W_IN[int(N_NODES / num_community):] = 0
         radius = np.max(np.abs(np.linalg.eigvals(W)))
         spectral_radius = SPECT_RADIUS
         W = W * (spectral_radius / radius)
 
         # delayed signal
-        L = int(N_NODES*2)
+        L = int(N_NODES * 2)
         buffer = L
         total_len = future + trainlen + buffer
         data = [0 if np.random.rand() < 0.5 else 1 for i in range(total_len)]
-        data = np.array(data)*r_sig
+        data = np.array(data) * r_sig
         # print(data)
-
 
         esn = LI_ESN_internal(n_inputs=1,
                               n_outputs=L,
@@ -232,14 +213,13 @@ def calculate_memory_capacity(mu, r_sig, num_community):
                               noise=0,
                               time_scale=time_scale)
 
-
         target = np.zeros((total_len - buffer, L))
         for i in range(L):
-            target.T[i][:] = data[buffer-(i+1):-(i+1)]
+            target.T[i][:] = data[buffer - (i + 1):-(i + 1)]
 
-        pred_training = esn.fit(data[buffer:trainlen+buffer], target[:trainlen])
+        esn.fit(data[buffer:trainlen + buffer], target[:trainlen])
 
-        prediction = esn.predict(data[trainlen+buffer:])
+        prediction = esn.predict(data[trainlen + buffer:])
         memory_capacity_result = memory_capacity(L, buffer, data, prediction)
         memory_capacity_list.append(memory_capacity_result)
     return np.mean(memory_capacity_list), mu
@@ -253,4 +233,4 @@ if __name__ == '__main__':
         print(mc, mu)
         mc_list.append(mc)
     mc_list = np.array(mc_list)
-    np.savetxt('result_rsig_0.5_ncom_50.out', (mu_list, mc_list))
+    np.savetxt('newresult_rsig_0.5_ncom_50.out', (mu_list, mc_list))

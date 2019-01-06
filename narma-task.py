@@ -9,7 +9,7 @@ import argparse
 import make_modular_networks
 import make_layered_networks
 
-N_NODES = 500
+N_NODES = 200
 SPECT_RADIUS = 0.9
 
 a = 1
@@ -231,12 +231,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--average_degree', type=int, default=10)
     parser.add_argument('--num_community', type=float, default=10)
-    parser.add_argument('--layered', type=bool, default=False)
+    parser.add_argument('--layered', type=bool)
     args = parser.parse_args()
 
     print(args)
 
-    mu_list = np.arange(0, 0.50, 0.01)
+    mu_list = np.arange(0, 0.50, 0.02)
     narma_mean_list = []
     narma_std_list = []
     for mu in mu_list:

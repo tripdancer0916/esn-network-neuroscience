@@ -192,7 +192,7 @@ class LI_ESN_internal:
 def calculate_memory_capacity(mu, r_sig, average_degree, num_community):
     memory_capacity_list = []
     for k in range(30):
-        W = generate_networks.make_bypass_network(N_NODES, average_degree, num_community, mu, 0.01)
+        W = generate_networks.make_bypass_network(N_NODES, average_degree, num_community, mu, mu*0.1)
         # W = make_modular_networks.make_modular_network(N_NODES, average_degree, num_community, mu)
         W_IN = (np.random.rand(N_NODES, 1) * 2 - 1) * 0.1
         W_IN[int(N_NODES / num_community):] = 0

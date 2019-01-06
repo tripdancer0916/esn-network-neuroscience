@@ -130,19 +130,19 @@ def make_bypass_network(N, average_degree, community_number, mu, eta):
                 if int(com_index) == 0 or int(com_index) == community_number-1:
                     if np.random.rand() < (average_degree*((mu-eta)*0.5)-k_out_prev)/size:
                         G[i][j] = np.random.randn()
-                        # G[j][i] = np.random.randn()
+                        G[j][i] = np.random.randn()
                 else:
                     if np.random.rand() < (average_degree*(mu-eta)-k_out_prev)/size:
                         G[i][j] = np.random.randn()
-                        # G[j][i] = np.random.randn()
+                        G[j][i] = np.random.randn()
             else:
                 if int(com_index) == 0 or int(com_index) == community_number-1:
                     if np.random.rand() < (average_degree*(eta*0.5)-k_out_prev)/size:
                         G[i][j] = np.random.randn()
-                        # G[j][i] = np.random.randn()
+                        G[j][i] = np.random.randn()
                 else:
                     if np.random.rand() < (average_degree*(eta)-k_out_prev)/size:
                         G[i][j] = np.random.randn()
-                        # G[j][i] = np.random.randn()
+                        G[j][i] = np.random.randn()
 
     return G

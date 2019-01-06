@@ -4,14 +4,20 @@ import networkx as nx
 import seaborn as sns
 from matplotlib import pyplot as plt
 
+import argparse
+
+import make_modular_networks
+import make_layered_networks
+
 N_NODES = 500
 SPECT_RADIUS = 0.9
 
 a = 1
-time_scale = np.ones(N_NODES)*a
+time_scale = np.ones(N_NODES) * a
 trainlen = 2200
 future = 1000
 buffer = 100
+
 
 def correct_dimensions(s, targetlength):
     if s is not None:
@@ -29,14 +35,16 @@ def correct_dimensions(s, targetlength):
 def identity(x):
     return x
 
+
 def step_function(x):
     if x > 0.5:
         return 1
     else:
         return 0
 
+
 def sigmoid(x):
-    return 1/(1+np.exp(-10*x+1))
+    return 1 / (1 + np.exp(-10 * x + 1))
 
 
 class LI_ESN_internal:
@@ -93,7 +101,7 @@ class LI_ESN_internal:
         preactivation = (np.dot(self.W, state) + np.dot(self.W_in, input_pattern))
         state = (1 - self.time_scale) * state + self.time_scale * np.tanh(preactivation)
         # state = (1 - self.time_scale) * state + self.time_scale * sigmoid(preactivation)
-        return (state + self.noise * self.time_scale * (self.random_state_.rand(self.n_reservoir) - 0.5))
+        return state + self.noise * self.time_scale * (self.random_state_.rand(self.n_reservoir) - 0.5)
 
     def calc_lyapunov_exp(self, inputs, initial_distance, n):
         if inputs.ndim < 2:
@@ -102,19 +110,18 @@ class LI_ESN_internal:
         states2 = np.zeros((inputs.shape[0], self.n_reservoir))
         transient = min(int(inputs.shape[0] / 10), 100)
         for i in range(1, transient):
-            states1[i, :] = self._update(states1[i-1], inputs[i, :])
-        states2[transient-1, :] = states1[transient-1, :]
-        states2[transient-1, n] = states2[transient-1, n] + initial_distance
+            states1[i, :] = self._update(states1[i - 1], inputs[i, :])
+        states2[transient - 1, :] = states1[transient - 1, :]
+        states2[transient - 1, n] = states2[transient - 1, n] + initial_distance
         gamma_k_list = []
         for k in range(transient, inputs.shape[0]):
-            states1[k, :] = self._update(states1[k-1], inputs[k, :])
-            states2[k, :] = self._update(states2[k-1], inputs[k, :])
-            gamma_k = np.linalg.norm(states2[k, :]-states1[k, :])
-            gamma_k_list.append(gamma_k/initial_distance)
-            states2[k, :] = states1[k, :] + (initial_distance/gamma_k)*(states2[k, :]-states1[k, :])
+            states1[k, :] = self._update(states1[k - 1], inputs[k, :])
+            states2[k, :] = self._update(states2[k - 1], inputs[k, :])
+            gamma_k = np.linalg.norm(states2[k, :] - states1[k, :])
+            gamma_k_list.append(gamma_k / initial_distance)
+            states2[k, :] = states1[k, :] + (initial_distance / gamma_k) * (states2[k, :] - states1[k, :])
         lyapunov_exp = np.mean(np.log(gamma_k_list))
         return lyapunov_exp
-
 
     def fit(self, inputs, outputs):
         if inputs.ndim < 2:
@@ -131,7 +138,7 @@ class LI_ESN_internal:
         transient = min(int(inputs.shape[0] / 10), 100)
         extended_states = np.hstack((states, inputs_scaled))
 
-        self.W_out = np.dot(np.linalg.pinv(extended_states[transient:, :]),teachers_scaled[transient:, :]).T
+        self.W_out = np.dot(np.linalg.pinv(extended_states[transient:, :]), teachers_scaled[transient:, :]).T
         # print(self.W_out.shape)
 
         # remember the last state for later:
@@ -165,51 +172,43 @@ class LI_ESN_internal:
 
         for n in range(n_samples):
             states[n + 1, :] = self._update(states[n, :], inputs[n + 1, :])
-            outputs[n + 1, :] = np.dot(self.W_out,np.concatenate([states[n + 1, :], inputs[n + 1, :]]))
+            outputs[n + 1, :] = np.dot(self.W_out, np.concatenate([states[n + 1, :], inputs[n + 1, :]]))
 
         return self.out_activation(outputs[1:])
         # print(outputs[1:])
         # return np.heaviside(outputs[1:]-0.5, 0)*0.3
 
+
 def make_data_for_narma(length):
     tau = 0.01
     buffer = 100
-    x = np.random.rand(length+100)*0.5
+    x = np.random.rand(length + 100) * 0.5
     y = np.zeros(length)
     for i in range(length):
         if i < 29:
-            y[i] = 0.2*y[i-1] + 0.004*y[i-1]*np.sum(np.hstack((y[i-29:], y[:i]))) + 1.5*x[i-29+100]*x[i+100] + 0.001
+            y[i] = 0.2 * y[i - 1] + 0.004 * y[i - 1] * np.sum(np.hstack((y[i - 29:], y[:i]))) + 1.5 * x[i - 29 + 100] * \
+                   x[i + 100] + 0.001
         else:
-            y[i] = 0.2*y[i-1] + 0.004*y[i-1]*np.sum(np.hstack((y[i-29:i]))) + 1.5*x[i-29+100]*x[i+100] + 0.001
+            y[i] = 0.2 * y[i - 1] + 0.004 * y[i - 1] * np.sum(np.hstack((y[i - 29:i]))) + 1.5 * x[i - 29 + 100] * x[
+                i + 100] + 0.001
     return x, y
 
 
-def make_modular_network(N, average_degree, community_number, mu):
-    assert N % community_number == 0, 'N must be devisible by community_number'
-    G = np.zeros((N, N))
-    for i in range(N):
-        for j in range(i, N):
-            if j < (N/community_number)*(i//(N/community_number)+1):
-                if np.random.rand() < ((N-(i/N))/N)*average_degree*(1-mu)/(N/community_number):
-                    G[i][j] = np.random.randn()
-                    G[j][i] = G[i][j]
-            else:
-                if np.random.rand() < ((N-(i/N))/N)*average_degree*(mu)/(N-(N/community_number)):
-                    G[i][j] = np.random.randn()
-                    G[j][i] = G[i][j]
-    return G
-
-def calculate_narma(mu, r_sig, average_degree, num_community):
+def calculate_narma(mu, r_sig, average_degree, num_community, is_layered):
     narma_list = []
     for k in range(30):
-        W = make_modular_network(N_NODES, average_degree, num_community, mu)
-        W_IN = (np.random.rand(N_NODES, 1) * 2 - 1)*0.1
-        W_IN[int(N_NODES/num_community):] = 0
+        if is_layered:
+            W = make_layered_networks.make_layered_network(N_NODES, average_degree, num_community, mu)
+        else:
+            W = make_modular_networks.make_modular_network(N_NODES, average_degree, num_community, mu)
+
+        W_IN = (np.random.rand(N_NODES, 1) * 2 - 1) * 0.1
+        W_IN[int(N_NODES / num_community):] = 0
         radius = np.max(np.abs(np.linalg.eigvals(W)))
         spectral_radius = SPECT_RADIUS
         W = W * (spectral_radius / radius)
 
-        data, target = make_data_for_narma(trainlen+future)
+        data, target = make_data_for_narma(trainlen + future)
 
         esn = LI_ESN_internal(n_inputs=1,
                               n_outputs=1,
@@ -219,22 +218,41 @@ def calculate_narma(mu, r_sig, average_degree, num_community):
                               noise=0,
                               time_scale=time_scale)
 
-        pred_training = esn.fit(data[buffer:trainlen+buffer], target[:trainlen])
+        esn.fit(data[buffer:trainlen + buffer], target[:trainlen])
 
-        prediction = esn.predict(data[trainlen+buffer:])
-        narma_result = np.sqrt(np.mean((np.reshape(prediction, -1)-np.reshape(target[2200:], -1))**2)/np.var(target[2200:]))
-        # print(memory_capacity_result)
+        prediction = esn.predict(data[trainlen + buffer:])
+        narma_result = np.sqrt(
+            np.mean((np.reshape(prediction, -1) - np.reshape(target[2200:], -1)) ** 2) / np.var(target[2200:]))
         narma_list.append(narma_result)
-    return np.mean(narma_list), mu
-
+    return np.mean(narma_list), np.std(narma_list)
 
 
 if __name__ == '__main__':
-    mu_list = np.arange(0, 0.95, 0.025)
-    narma_list = []
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--average_degree', type=int, default=10)
+    parser.add_argument('--r_sig', type=float, default=0.8)
+    parser.add_argument('--num_community', type=float, default=10)
+    parser.add_argument('--layered', type=bool, default=False)
+    args = parser.parse_args()
+
+    print(args)
+
+    mu_list = np.arange(0, 0.80, 0.025)
+    narma_mean_list = []
+    narma_std_list = []
     for mu in mu_list:
-        narma, _ = calculate_narma(mu=mu, r_sig=0.5, average_degree=10, num_community=50)
-        print(narma, mu)
-        narma_list.append(narma)
-    narma_list = np.array(narma_list)
-    np.savetxt('narmaresult_rsig_0.5_k_10_ncom_50.out', (mu_list, narma_list))
+        narma_mean, narma_std = calculate_narma(mu=mu, r_sig=args.r_sig,
+                                                average_degree=args.average_degree,
+                                                num_community=args.num_community,
+                                                is_layered=args.layered)
+        print(mu, narma_mean, narma_std)
+        narma_mean_list.append(narma_mean)
+        narma_std_list.append(narma_std)
+    narma_mean_list = np.array(narma_mean_list)
+    narma_std_list = np.array(narma_std_list)
+    if args.layered:
+        np.savetxt('./narma-result/result_rsig_{}_averagedegree_{}_ncom_{}_layered.out'.
+                   format(args.r_sig, args.average_degree, args.num_community), (mu_list, narma_mean_list, narma_std_list))
+    else:
+        np.savetxt('./narma-result/result_rsig_{}_averagedegree_{}_ncom_{}.out'.
+                   format(args.r_sig, args.average_degree, args.num_community), (mu_list, narma_mean_list, narma_std_list))

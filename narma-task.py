@@ -194,7 +194,7 @@ def make_data_for_narma(length):
     return x, y
 
 
-def calculate_narma(mu, r_sig, average_degree, num_community, is_layered):
+def calculate_narma(mu, average_degree, num_community, is_layered):
     narma_list = []
     for k in range(30):
         if is_layered:
@@ -230,7 +230,6 @@ def calculate_narma(mu, r_sig, average_degree, num_community, is_layered):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--average_degree', type=int, default=10)
-    parser.add_argument('--r_sig', type=float, default=0.8)
     parser.add_argument('--num_community', type=float, default=10)
     parser.add_argument('--layered', type=bool, default=False)
     args = parser.parse_args()
@@ -241,7 +240,7 @@ if __name__ == '__main__':
     narma_mean_list = []
     narma_std_list = []
     for mu in mu_list:
-        narma_mean, narma_std = calculate_narma(mu=mu, r_sig=args.r_sig,
+        narma_mean, narma_std = calculate_narma(mu=mu,
                                                 average_degree=args.average_degree,
                                                 num_community=args.num_community,
                                                 is_layered=args.layered)
@@ -251,8 +250,8 @@ if __name__ == '__main__':
     narma_mean_list = np.array(narma_mean_list)
     narma_std_list = np.array(narma_std_list)
     if args.layered:
-        np.savetxt('./narma-result/result_rsig_{}_averagedegree_{}_ncom_{}_layered.out'.
-                   format(args.r_sig, args.average_degree, args.num_community), (mu_list, narma_mean_list, narma_std_list))
+        np.savetxt('./narma-result/result_averagedegree_{}_ncom_{}_layered.out'.
+                   format(args.average_degree, args.num_community), (mu_list, narma_mean_list, narma_std_list))
     else:
-        np.savetxt('./narma-result/result_rsig_{}_averagedegree_{}_ncom_{}.out'.
-                   format(args.r_sig, args.average_degree, args.num_community), (mu_list, narma_mean_list, narma_std_list))
+        np.savetxt('./narma-result/result_averagedegree_{}_ncom_{}.out'.
+                   format(args.average_degree, args.num_community), (mu_list, narma_mean_list, narma_std_list))

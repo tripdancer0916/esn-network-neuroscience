@@ -4,7 +4,10 @@ import networkx as nx
 import seaborn as sns
 from matplotlib import pyplot as plt
 
+import argparse
+
 import make_modular_networks
+import make_layered_networks
 
 N_NODES = 200
 SPECT_RADIUS = 0.9
@@ -109,7 +112,7 @@ class LI_ESN_internal:
         preactivation = (np.dot(self.W, state) + np.dot(self.W_in, input_pattern))
         state = (1 - self.time_scale) * state + self.time_scale * np.tanh(preactivation)
         # state = (1 - self.time_scale) * state + self.time_scale * sigmoid(preactivation)
-        return (state + self.noise * self.time_scale * (self.random_state_.rand(self.n_reservoir) - 0.5))
+        return state + self.noise * self.time_scale * (self.random_state_.rand(self.n_reservoir) - 0.5)
 
     def calc_lyapunov_exp(self, inputs, initial_distance, n):
         if inputs.ndim < 2:
@@ -187,10 +190,13 @@ class LI_ESN_internal:
         # return np.heaviside(outputs[1:]-0.5, 0)*0.3
 
 
-def calculate_memory_capacity(mu, r_sig, num_community):
+def calculate_memory_capacity(mu, r_sig, average_degree, num_community, is_layered):
     memory_capacity_list = []
     for k in range(30):
-        W = make_modular_networks.make_modular_network(N_NODES, 6, num_community, mu)
+        if is_layered:
+            W = make_layered_networks.make_layered_network(N_NODES, average_degree, num_community, mu)
+        else:
+            W = make_modular_networks.make_modular_network(N_NODES, average_degree, num_community, mu)
         W_IN = (np.random.rand(N_NODES, 1) * 2 - 1) * 0.1
         W_IN[int(N_NODES / num_community):] = 0
         radius = np.max(np.abs(np.linalg.eigvals(W)))
@@ -222,15 +228,29 @@ def calculate_memory_capacity(mu, r_sig, num_community):
         prediction = esn.predict(data[trainlen + buffer:])
         memory_capacity_result = memory_capacity(L, buffer, data, prediction)
         memory_capacity_list.append(memory_capacity_result)
-    return np.mean(memory_capacity_list), mu
+    return np.mean(memory_capacity_list), np.std(memory_capacity_list)
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--average_degree', type=int, default=6)
+    parser.add_argument('--r_sig', type=float, default=0.5)
+    parser.add_argument('--num_community', type=float, default=4)
+    parser.add_argument('--layered', type=bool, default=False)
+    args = parser.parse_args()
+
     mu_list = np.arange(0, 0.80, 0.025)
-    mc_list = []
+    mc_mean_list = []
+    mc_std_list = []
     for mu in mu_list:
-        mc, _ = calculate_memory_capacity(mu=mu, r_sig=0.5, num_community=20)
-        print(mc, mu)
-        mc_list.append(mc)
-    mc_list = np.array(mc_list)
-    np.savetxt('newresult_rsig_0.5_ncom_50.out', (mu_list, mc_list))
+        mc_mean, mc_std = calculate_memory_capacity(mu=mu, r_sig=args.r_sig,
+                                                    average_degree=args.average_degree,
+                                                    num_community=args.num_community,
+                                                    is_layered=args.layered)
+        print(mc_mean, mc_std)
+        mc_mean_list.append(mc_mean)
+        mc_std_list.append(mc_std)
+    mc_mean_list = np.array(mc_mean_list)
+    mc_std_list = np.array(mc_std_list)
+    np.savetxt('./mc-result/result_rsig_{}_averagedegree_{}_ncom_{}.out'.
+               format(args.r_sig, args.average_degree, args.num_community), (mu_list, mc_mean_list, mc_std_list))

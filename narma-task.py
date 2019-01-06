@@ -237,7 +237,7 @@ if __name__ == '__main__':
 
     print(args)
 
-    mu_list = np.arange(0, 0.80, 0.025)
+    mu_list = np.arange(0, 0.50, 0.01)
     narma_mean_list = []
     narma_std_list = []
     for mu in mu_list:

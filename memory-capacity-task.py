@@ -8,6 +8,7 @@ import argparse
 
 import make_modular_networks
 import make_layered_networks
+import generate_networks
 
 N_NODES = 200
 SPECT_RADIUS = 0.9

@@ -6,15 +6,14 @@ from matplotlib import pyplot as plt
 
 import argparse
 
-import make_modular_networks
-import make_layered_networks
+import generate_networks
 
 N_NODES = 200
 SPECT_RADIUS = 0.9
 
 a = 1
 time_scale = np.ones(N_NODES) * a
-trainlen = 2200
+trainlen = 5000
 future = 1000
 buffer = 100
 
@@ -45,6 +44,17 @@ def step_function(x):
 
 def sigmoid(x):
     return 1 / (1 + np.exp(-10 * x + 1))
+
+
+def memory_capacity(L, buffer, data, output_data):
+    MC = 0
+    for k in range(L):
+        cov_matrix = np.cov(
+            np.array([data[trainlen + buffer - (k + 1): trainlen + buffer - (k + 1) + 1000], output_data.T[k]]))
+        MC_k = cov_matrix[0][1] ** 2
+        MC_k = MC_k / (np.var(data[trainlen + buffer:]) * np.var(output_data.T[k]))
+        MC += MC_k
+    return MC
 
 
 class LI_ESN_internal:
@@ -179,79 +189,66 @@ class LI_ESN_internal:
         # return np.heaviside(outputs[1:]-0.5, 0)*0.3
 
 
-def make_data_for_narma(length):
-    tau = 0.01
-    buffer = 100
-    x = np.random.rand(length + 100) * 0.5
-    y = np.zeros(length)
-    for i in range(length):
-        if i < 29:
-            y[i] = 0.2 * y[i - 1] + 0.004 * y[i - 1] * np.sum(np.hstack((y[i - 29:], y[:i]))) + 1.5 * x[i - 29 + 100] * \
-                   x[i + 100] + 0.001
-        else:
-            y[i] = 0.2 * y[i - 1] + 0.004 * y[i - 1] * np.sum(np.hstack((y[i - 29:i]))) + 1.5 * x[i - 29 + 100] * x[
-                i + 100] + 0.001
-    return x, y
-
-
-def calculate_narma(mu, average_degree, num_community, is_layered):
-    narma_list = []
+def calculate_memory_capacity(mu, r_sig, average_degree, num_community):
+    memory_capacity_list = []
     for k in range(30):
-        if is_layered:
-            W = make_layered_networks.make_layered_network(N_NODES, average_degree, num_community, mu)
-        else:
-            W = make_modular_networks.make_modular_network(N_NODES, average_degree, num_community, mu)
-
+        W = generate_networks.make_bypass_network(N_NODES, average_degree, num_community, mu)
+        # W = make_modular_networks.make_modular_network(N_NODES, average_degree, num_community, mu)
         W_IN = (np.random.rand(N_NODES, 1) * 2 - 1) * 0.1
         W_IN[int(N_NODES / num_community):] = 0
         radius = np.max(np.abs(np.linalg.eigvals(W)))
         spectral_radius = SPECT_RADIUS
         W = W * (spectral_radius / radius)
 
-        data, target = make_data_for_narma(trainlen + future)
+        # delayed signal
+        L = int(N_NODES * 2)
+        buffer = L
+        total_len = future + trainlen + buffer
+        data = [0 if np.random.rand() < 0.5 else 1 for i in range(total_len)]
+        data = np.array(data) * r_sig
+        # print(data)
 
         esn = LI_ESN_internal(n_inputs=1,
-                              n_outputs=1,
+                              n_outputs=L,
                               n_reservoir=N_NODES,
                               W=W,
                               W_in=W_IN,
                               noise=0,
                               time_scale=time_scale)
 
+        target = np.zeros((total_len - buffer, L))
+        for i in range(L):
+            target.T[i][:] = data[buffer - (i + 1):-(i + 1)]
+
         esn.fit(data[buffer:trainlen + buffer], target[:trainlen])
 
         prediction = esn.predict(data[trainlen + buffer:])
-        narma_result = np.sqrt(
-            np.mean((np.reshape(prediction, -1) - np.reshape(target[2200:], -1)) ** 2) / np.var(target[2200:]))
-        narma_list.append(narma_result)
-    return np.mean(narma_list), np.std(narma_list)
+        memory_capacity_result = memory_capacity(L, buffer, data, prediction)
+        memory_capacity_list.append(memory_capacity_result)
+    return np.mean(memory_capacity_list), np.std(memory_capacity_list)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--average_degree', type=int, default=10)
-    parser.add_argument('--num_community', type=float, default=10)
-    parser.add_argument('--layered', type=bool, default=False)
+    parser.add_argument('--average_degree', type=int, default=6)
+    parser.add_argument('--r_sig', type=float, default=0.5)
+    parser.add_argument('--num_community', type=float, default=4)
+    # parser.add_argument('--layered', type=bool, default=False)
     args = parser.parse_args()
 
     print(args)
 
-    mu_list = np.arange(0, 0.50, 0.02)
-    narma_mean_list = []
-    narma_std_list = []
+    mu_list = np.arange(0, 0.50, 0.01)
+    mc_mean_list = []
+    mc_std_list = []
     for mu in mu_list:
-        narma_mean, narma_std = calculate_narma(mu=mu,
-                                                average_degree=args.average_degree,
-                                                num_community=args.num_community,
-                                                is_layered=args.layered)
-        print(mu, narma_mean, narma_std)
-        narma_mean_list.append(narma_mean)
-        narma_std_list.append(narma_std)
-    narma_mean_list = np.array(narma_mean_list)
-    narma_std_list = np.array(narma_std_list)
-    if args.layered:
-        np.savetxt('./narma-result/result_averagedegree_{}_ncom_{}_layered.out'.
-                   format(args.average_degree, args.num_community), (mu_list, narma_mean_list, narma_std_list))
-    else:
-        np.savetxt('./narma-result/result_averagedegree_{}_ncom_{}.out'.
-                   format(args.average_degree, args.num_community), (mu_list, narma_mean_list, narma_std_list))
+        mc_mean, mc_std = calculate_memory_capacity(mu=mu, r_sig=args.r_sig,
+                                                    average_degree=args.average_degree,
+                                                    num_community=args.num_community)
+        print(mu, mc_mean, mc_std)
+        mc_mean_list.append(mc_mean)
+        mc_std_list.append(mc_std)
+    mc_mean_list = np.array(mc_mean_list)
+    mc_std_list = np.array(mc_std_list)
+    np.savetxt('./mc-result/result_rsig_{}_averagedegree_{}_ncom_{}_bypass.out'.
+               format(args.r_sig, args.average_degree, args.num_community), (mu_list, mc_mean_list, mc_std_list))

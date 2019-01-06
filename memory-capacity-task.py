@@ -239,6 +239,8 @@ if __name__ == '__main__':
     parser.add_argument('--layered', type=bool, default=False)
     args = parser.parse_args()
 
+    print(args)
+
     mu_list = np.arange(0, 0.80, 0.025)
     mc_mean_list = []
     mc_std_list = []
@@ -247,10 +249,14 @@ if __name__ == '__main__':
                                                     average_degree=args.average_degree,
                                                     num_community=args.num_community,
                                                     is_layered=args.layered)
-        print(mc_mean, mc_std)
+        print(mu, mc_mean, mc_std)
         mc_mean_list.append(mc_mean)
         mc_std_list.append(mc_std)
     mc_mean_list = np.array(mc_mean_list)
     mc_std_list = np.array(mc_std_list)
-    np.savetxt('./mc-result/result_rsig_{}_averagedegree_{}_ncom_{}.out'.
-               format(args.r_sig, args.average_degree, args.num_community), (mu_list, mc_mean_list, mc_std_list))
+    if args.layered:
+        np.savetxt('./mc-result/result_rsig_{}_averagedegree_{}_ncom_{}_layered.out'.
+                   format(args.r_sig, args.average_degree, args.num_community), (mu_list, mc_mean_list, mc_std_list))
+    else:
+        np.savetxt('./mc-result/result_rsig_{}_averagedegree_{}_ncom_{}.out'.
+                   format(args.r_sig, args.average_degree, args.num_community), (mu_list, mc_mean_list, mc_std_list))

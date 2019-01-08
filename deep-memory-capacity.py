@@ -2,6 +2,7 @@
 import numpy as np
 import networkx as nx
 import seaborn as sns
+import copy
 from matplotlib import pyplot as plt
 
 import argparse

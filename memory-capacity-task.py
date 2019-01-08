@@ -242,7 +242,7 @@ if __name__ == '__main__':
 
     print(args)
 
-    mu_list = np.arange(0, 0.10, 0.001)
+    mu_list = np.arange(0, 0.02, 0.001)
     mc_mean_list = []
     mc_std_list = []
     for mu in mu_list:

@@ -3,7 +3,7 @@ import numpy as np
 import networkx as nx
 import seaborn as sns
 from matplotlib import pyplot as plt
-
+import generate_networks
 import argparse
 
 import make_modular_networks
@@ -17,6 +17,8 @@ time_scale = np.ones(N_NODES) * a
 trainlen = 2200
 future = 1000
 buffer = 100
+
+import copy
 
 
 def correct_dimensions(s, targetlength):
@@ -198,9 +200,9 @@ def calculate_narma(mu, average_degree, num_community, is_layered):
     narma_list = []
     for k in range(30):
         if is_layered:
-            W = make_layered_networks.make_layered_network(N_NODES, average_degree, num_community, mu)
+            W = generate_networks.make_recurrent_layered_network(N_NODES, average_degree, num_community, mu)
         else:
-            W = make_modular_networks.make_modular_network(N_NODES, average_degree, num_community, mu)
+            W = generate_networks.make_modular_network(N_NODES, average_degree, num_community, mu)
 
         W_IN = (np.random.rand(N_NODES, 1) * 2 - 1) * 0.1
         W_IN[int(N_NODES / num_community):] = 0

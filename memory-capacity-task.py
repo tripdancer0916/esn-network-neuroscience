@@ -234,7 +234,7 @@ def calculate_memory_capacity(mu, r_sig, average_degree, num_community, is_layer
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--average_degree', type=int, default=10)
+    parser.add_argument('--average_degree', type=int, default=20)
     parser.add_argument('--r_sig', type=float, default=0.8)
     parser.add_argument('--num_community', type=float, default=5)
     parser.add_argument('--layered', type=bool, default=False)
@@ -242,7 +242,7 @@ if __name__ == '__main__':
 
     print(args)
 
-    mu_list = np.arange(0, 0.02, 0.001)
+    mu_list = np.arange(0, 0.5, 0.01)
     mc_mean_list = []
     mc_std_list = []
     for mu in mu_list:
